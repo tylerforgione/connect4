@@ -70,17 +70,17 @@ def terminal(board):
     else:
         return sum(1 for row in board for item in row if item is not EMPTY) == 42
 
-def utility(board):
+def utility(board, depth):
     if winner(board) == RED:
-        return 1000
+        return 1000 + depth
     elif winner(board) == YELLOW:
-        return -1000
+        return -1000 - depth
     else:
         return 0
 
-def evaluate(board):
+def evaluate(board, depth):
     if terminal(board):
-        return utility(board)
+        return utility(board, depth)
 
     score = 0
     score += evaluate_windows(board, RED) - evaluate_windows(board, YELLOW)
@@ -173,14 +173,14 @@ def minimax(board, depth=7):
 
 def max_value(board, depth, alpha=-math.inf, beta=math.inf):
     if terminal(board):
-        return utility(board)
+        return utility(board, depth)
 
     if depth == 0:
-        return evaluate(board)
+        return evaluate(board, depth)
 
     v = -math.inf
     for action in actions(board):
-        v = max(v, min_value(result(board, action), depth - 1))
+        v = max(v, min_value(result(board, action), depth - 1, alpha, beta))
         alpha = max(alpha, v)
         if alpha >= beta:
             break
@@ -189,14 +189,14 @@ def max_value(board, depth, alpha=-math.inf, beta=math.inf):
 
 def min_value(board, depth, alpha=-math.inf, beta=math.inf):
     if terminal(board):
-        return utility(board)
+        return utility(board, depth)
 
     if depth == 0:
-        return evaluate(board)
+        return evaluate(board, depth)
 
     v = math.inf
     for action in actions(board):
-        v = min(v, max_value(result(board, action), depth - 1))
+        v = min(v, max_value(result(board, action), depth - 1, alpha, beta))
         beta = min(beta, v)
         if alpha >= beta:
             break
