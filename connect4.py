@@ -1,5 +1,6 @@
 import copy
 import math
+import time
 
 RED = 'R'
 YELLOW = 'Y'
@@ -72,9 +73,9 @@ def terminal(board):
 
 def utility(board, depth):
     if winner(board) == RED:
-        return 1000 + depth
+        return 100000 - (depth * 100)
     elif winner(board) == YELLOW:
-        return -1000 - depth
+        return -100000 + (depth * 100)
     else:
         return 0
 
@@ -137,11 +138,11 @@ def score_window(window, player):
     if player_count == 4:
         score += 1000
     elif player_count == 3 and empty_count == 1:
-        score += 100
+        score += 50
     elif player_count == 2 and empty_count == 2:
-        score += 10
+        score += 20
     elif player_count == 1 and empty_count == 3:
-        score += 1
+        score += 5
 
     return score
 
@@ -153,11 +154,17 @@ def minimax(board, depth=7):
     if terminal(board):
         return None
 
+    s = time.time()
+
     p = current_player(board)
     optimal_value = -math.inf if p == RED else math.inf
     optimal_move = None
 
-    for action in actions(board):
+    # use move ordering at the root in order to save processing time
+    possible_moves = actions(board)
+    ordered_moves = move_ordering(board, possible_moves)
+
+    for action in ordered_moves:
         if p is RED:
             value = min_value(result(board, action), depth-1)
             if value > optimal_value:
@@ -169,17 +176,25 @@ def minimax(board, depth=7):
                 optimal_value = value
                 optimal_move = action
 
+    e = time.time()
+    print('Time elapsed: ' + str(e - s))
+
     return optimal_move
 
 def max_value(board, depth, alpha=-math.inf, beta=math.inf):
+    """
+    Maximizing function which tries to get the highest score possible
+    """
     if terminal(board):
         return utility(board, depth)
 
     if depth == 0:
         return evaluate(board, depth)
 
+    possible_moves = actions(board)
+
     v = -math.inf
-    for action in actions(board):
+    for action in possible_moves:
         v = max(v, min_value(result(board, action), depth - 1, alpha, beta))
         alpha = max(alpha, v)
         if alpha >= beta:
@@ -188,17 +203,98 @@ def max_value(board, depth, alpha=-math.inf, beta=math.inf):
     return v
 
 def min_value(board, depth, alpha=-math.inf, beta=math.inf):
+    """
+    Minimizing function which tries to get the lowest score possible
+    """
     if terminal(board):
         return utility(board, depth)
 
     if depth == 0:
         return evaluate(board, depth)
 
+    possible_moves = actions(board)
+
     v = math.inf
-    for action in actions(board):
+    for action in possible_moves:
         v = min(v, max_value(result(board, action), depth - 1, alpha, beta))
         beta = min(beta, v)
         if alpha >= beta:
             break
 
     return v
+
+def move_ordering(board, actions_list):
+    """
+    Returns a list of moves sorted by priority.
+    The higher priority moves will be played first.
+    """
+    if not actions_list:
+        return []
+
+    if isinstance(actions_list, set):
+        actions_list = list(actions_list)
+
+    action_scores = []
+
+    # evaluate the priority of each move
+    for action in actions_list:
+        score = evaluate_action_priority(board, action)
+        action_scores.append((action, score))
+
+    # sort by score
+    action_scores.sort(key=lambda x: x[1], reverse=True)
+
+    return [move for move, score in action_scores]
+
+def evaluate_action_priority(board, action):
+    """
+    Returns the score of the given action in the given board.
+    """
+    row, col = action
+    prio = 0
+
+    # check if can win immediately (best move)
+    check_board = result(board, action)
+    p = current_player(board)
+
+    if winner(check_board) == p:
+        return 1000000
+
+    # center columns are worth more than surrounding
+    center_bonus = {0: 0, 1: 10, 2: 30, 3: 50, 4: 30, 5: 10, 6: 0}
+    prio += center_bonus.get(col, 0)
+
+    # check if we can block opponent (second best move)
+    opp = YELLOW if p == RED else RED
+
+    for opp_action in actions(board):
+        temp_result = result(board, opp_action)
+        if winner(temp_result) == opp:
+            if opp_action[1] == action[1]:
+                prio += 500000
+            break
+
+    # determine how many threats are generated with this move
+    # and assign priority based on this
+    threats_generated = count_threats(board, action, p)
+    prio += threats_generated*100
+
+    # lower rows on the board are better because they are the foundation
+    # for upper rows
+    prio += (6-row) * 2
+
+    return prio
+
+def count_threats(board, action, p):
+    """
+    Returns the number of threats a player can generate with an action
+    """
+    test_board = result(board, action)
+    threats = 0
+
+    for next_move in actions(test_board):
+        next_board = result(test_board, next_move)
+        if winner(next_board) == p:
+            threats += 1
+
+    return threats
