@@ -72,8 +72,10 @@ def terminal(board):
         return sum(1 for row in board for item in row if item is not EMPTY) == 42
 
 def utility(board, depth):
+    # give more points to quicker wins
     if winner(board) == RED:
         return 100000 - (depth * 100)
+    # give less points to quicker losses
     elif winner(board) == YELLOW:
         return -100000 + (depth * 100)
     else:
@@ -146,13 +148,22 @@ def score_window(window, player):
 
     return score
 
+transpo_table = {}
+
 # set depth to 7 by default so the game goes at a proper pace
 def minimax(board, depth=7):
     """
     Returns the optimal action for the current player.
+    Depth-limited, transposition table, alpha-beta pruning.
     """
     if terminal(board):
         return None
+
+    board_key = tuple(tuple(row) for row in board)
+    if board_key in transpo_table:
+        stored_depth, stored_value, stored_move = transpo_table[board_key]
+        if depth <= stored_depth:
+            return stored_move
 
     s = time.time()
 
@@ -163,6 +174,12 @@ def minimax(board, depth=7):
     # use move ordering at the root in order to save processing time
     possible_moves = actions(board)
     ordered_moves = move_ordering(board, possible_moves)
+
+    for action in possible_moves:
+        test_board = result(board, action)
+        if winner(test_board) == p:
+            print(f"Found winning move: {action}")
+            return action
 
     for action in ordered_moves:
         if p is RED:
@@ -179,12 +196,20 @@ def minimax(board, depth=7):
     e = time.time()
     print('Time elapsed: ' + str(e - s))
 
+    transpo_table[board_key] = (depth, optimal_value, optimal_move)
+    
     return optimal_move
 
 def max_value(board, depth, alpha=-math.inf, beta=math.inf):
     """
     Maximizing function which tries to get the highest score possible
     """
+    board_key = tuple(tuple(row) for row in board)
+    if board_key in transpo_table:
+        stored_depth, stored_value, stored_move = transpo_table[board_key]
+        if depth <= stored_depth:
+            return stored_value
+
     if terminal(board):
         return utility(board, depth)
 
@@ -200,12 +225,19 @@ def max_value(board, depth, alpha=-math.inf, beta=math.inf):
         if alpha >= beta:
             break
 
+    transpo_table[board_key] = (depth, v, None)
     return v
 
 def min_value(board, depth, alpha=-math.inf, beta=math.inf):
     """
     Minimizing function which tries to get the lowest score possible
     """
+    board_key = tuple(tuple(row) for row in board)
+    if board_key in transpo_table:
+        stored_depth, stored_value, stored_move = transpo_table[board_key]
+        if depth <= stored_depth:
+            return stored_value
+
     if terminal(board):
         return utility(board, depth)
 
@@ -221,6 +253,7 @@ def min_value(board, depth, alpha=-math.inf, beta=math.inf):
         if alpha >= beta:
             break
 
+    transpo_table[board_key] = (depth, v, None)
     return v
 
 def move_ordering(board, actions_list):
