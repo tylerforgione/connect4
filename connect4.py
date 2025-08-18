@@ -175,10 +175,16 @@ def minimax(board, depth=7):
     possible_moves = actions(board)
     ordered_moves = move_ordering(board, possible_moves)
 
-    for action in possible_moves:
-        test_board = result(board, action)
-        if winner(test_board) == p:
-            print(f"Found winning move: {action}")
+    # if AI is red, best move is always center column
+    # after that, it is fast enough to work on its own
+    count = sum(1 for row in board for item in row if item is EMPTY)
+    if count == 42:
+        return (5,3)
+
+    # winning moves should be
+    for action in ordered_moves:
+        if evaluate_action_priority(board, action) == 1000000:
+            print('Found winning move! ' + str(action))
             return action
 
     for action in ordered_moves:
