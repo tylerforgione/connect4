@@ -44,7 +44,7 @@ This doesn't matter however, as within my minimax function, I make it always cho
 ### Alpha-beta Pruning
 Since Connect 4 is quite a large game-space, I opted to use alpha-beta pruning. This basically makes it so that the algorithm does not check paths which are proven to be worse.
 In the max_value function, let's assume I've found some score. If, on the next loop I have 3 paths, all of which are worse (lower scores than I have already), I won't continue the recursive calls.
-Same goes for the min_value fucntion.
+Same goes for the min_value function.
 
 ### Move-ordering
 I've also implemented move-ordering. Instead of my minimax algorithm looking through all the possible moves, I order the moves in terms of priority. 
